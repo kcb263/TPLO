@@ -378,25 +378,64 @@
 
   .med-actions { display: flex; gap: 6px; align-items: center; }
 
-  .check-btn {
-    padding: 6px 14px;
-    border-radius: 20px;
-    border: 1.5px solid var(--green);
-    background: white;
-    color: var(--green);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
+  .dose-tracker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  .check-btn.given {
+  .dose-pips {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .dose-pip {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    color: var(--green);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .dose-pip.given {
     background: var(--green);
     color: white;
   }
 
-  .check-btn:hover { transform: scale(1.04); }
+  .dose-pip:hover:not(.given) {
+    background: var(--green-light);
+    transform: scale(1.1);
+  }
+
+  .dose-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .dose-label.all-given {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .dose-pip-time {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    pointer-events: none;
+  }
 
   /* Summary / stats */
   .stat-grid {
@@ -911,6 +950,16 @@ let selectedPain = null;
 let selectedTags = new Set();
 let logFilter = 'all';
 
+// =========== HELPERS ===========
+function freqToDoses(freq) {
+  if (!freq) return 1;
+  const f = freq.toLowerCase();
+  if (f.includes('twice') || f.includes('every 12')) return 2;
+  if (f.includes('three') || f.includes('every 8')) return 3;
+  if (f.includes('four') || f.includes('every 6')) return 4;
+  return 1;
+}
+
 // =========== INIT ===========
 function init() {
   loadData();
@@ -956,7 +1005,15 @@ function saveData() {
 function loadData() {
   const raw = localStorage.getItem('tplo_tracker');
   if (raw) {
-    try { state = { ...state, ...JSON.parse(raw) }; } catch(e) {}
+    try {
+      state = { ...state, ...JSON.parse(raw) };
+      // Migrate old boolean givenToday → dosesGivenToday array
+      state.medications.forEach(m => {
+        if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
+        if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
+        delete m.givenToday; delete m.givenTimes;
+      });
+    } catch(e) {}
   }
 }
 
@@ -1117,8 +1174,8 @@ function addMed() {
     freq: document.getElementById('medFreq').value,
     food: document.getElementById('medFood').value,
     notes: document.getElementById('medNotes').value.trim(),
-    givenToday: false,
-    givenTimes: [],
+    dosesRequired: freqToDoses(document.getElementById('medFreq').value),
+    dosesGivenToday: [],
   };
   state.medications.push(med);
   saveData();
@@ -1129,29 +1186,47 @@ function addMed() {
   renderMedLog();
 }
 
-function toggleMedGiven(id) {
-  const med = state.medications.find(m => m.id === id);
+function recordDose(medId, doseIndex) {
+  const med = state.medications.find(m => m.id === medId);
   if (!med) return;
-  med.givenToday = !med.givenToday;
-  if (med.givenToday) {
+  const today = toDateStr(new Date());
+  // Ensure array sized to dosesRequired
+  if (!med.dosesGivenToday) med.dosesGivenToday = [];
+  // If this slot is already filled, undo it (toggle off)
+  if (med.dosesGivenToday[doseIndex]) {
+    med.dosesGivenToday[doseIndex] = null;
+    // remove matching administration log entry
+    state.medAdministrations = state.medAdministrations.filter(
+      a => !(a.medId === medId && a.doseIndex === doseIndex && a.date === today)
+    );
+    state.entries = state.entries.filter(
+      e => !(e.medId === medId && e.doseIndex === doseIndex && e.date === today)
+    );
+  } else {
     const now = new Date();
+    const timeStr = toTimeStr(now);
+    med.dosesGivenToday[doseIndex] = timeStr;
     const logEntry = {
-      medId: id,
+      medId,
+      doseIndex,
       medName: med.name,
       dose: med.dose,
-      date: toDateStr(now),
-      time: toTimeStr(now),
+      date: today,
+      time: timeStr,
+      doseNum: doseIndex + 1,
+      totalDoses: med.dosesRequired,
     };
     state.medAdministrations.push(logEntry);
-    // also add to general log
     state.entries.unshift({
       id: Date.now(),
+      medId,
+      doseIndex,
       type: 'medication',
-      date: logEntry.date,
-      time: logEntry.time,
+      date: today,
+      time: timeStr,
       pain: null,
       tags: [med.name + (med.dose ? ` (${med.dose})` : '')],
-      notes: `Administered: ${med.name}${med.dose ? ' ' + med.dose : ''}`,
+      notes: `Administered: ${med.name}${med.dose ? ' ' + med.dose : ''} — Dose ${doseIndex + 1} of ${med.dosesRequired}`,
     });
   }
   saveData();
@@ -1174,20 +1249,34 @@ function renderMedSchedule() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">💊</div>No medications added yet.</div>';
     return;
   }
-  el.innerHTML = state.medications.map(med => `
-    <div class="med-row">
+  el.innerHTML = state.medications.map(med => {
+    const required = med.dosesRequired || 1;
+    const given = med.dosesGivenToday || [];
+    const givenCount = given.filter(Boolean).length;
+    const allGiven = givenCount >= required;
+    const pips = Array.from({length: required}, (_, i) => {
+      const time = given[i];
+      return `<div class="dose-pip ${time ? 'given' : ''}" onclick="recordDose(${med.id}, ${i})" title="${time ? 'Given at ' + time + ' (tap to undo)' : 'Tap to record dose ' + (i+1)}">
+        ${time ? '✓' : (i+1)}
+        ${time ? `<span class="dose-pip-time">${time}</span>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="med-row" style="padding-bottom: ${required > 1 ? '24px' : '12px'}">
       <div class="med-info">
         <div class="med-name">${med.name}${med.dose ? ' · ' + med.dose : ''}</div>
         <div class="med-details">${med.freq} · ${med.food}${med.notes ? ' · ' + med.notes : ''}</div>
       </div>
-      <div class="med-actions">
-        <button class="check-btn ${med.givenToday ? 'given' : ''}" onclick="toggleMedGiven(${med.id})">
-          ${med.givenToday ? '✓ Given' : 'Mark Given'}
-        </button>
-        <button class="btn btn-danger" onclick="deleteMed(${med.id})">✕</button>
+      <div class="med-actions" style="flex-direction:column;align-items:flex-end;gap:6px">
+        <div class="dose-tracker">
+          <div class="dose-pips">${pips}</div>
+        </div>
+        <div class="dose-label ${allGiven ? 'all-given' : ''}">
+          ${allGiven ? '✓ All doses given' : `${givenCount} of ${required} given`}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteMed(${med.id})" style="margin-top:2px">Remove</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderMedLog() {
@@ -1205,7 +1294,7 @@ function renderMedLog() {
           <span class="log-time">${l.date} ${l.time}</span>
         </div>
       </div>
-      <div class="log-body">${l.dose || 'Dose not specified'}</div>
+      <div class="log-body">${l.dose || 'Dose not specified'}${l.totalDoses > 1 ? ` &nbsp;·&nbsp; Dose ${l.doseNum} of ${l.totalDoses}` : ''}</div>
     </div>`
   ).join('');
 }
@@ -1375,7 +1464,7 @@ setInterval(() => {
   const today = toDateStr(new Date());
   const lastReset = localStorage.getItem('tplo_last_reset');
   if (lastReset !== today) {
-    state.medications.forEach(m => m.givenToday = false);
+    state.medications.forEach(m => m.dosesGivenToday = []);
     localStorage.setItem('tplo_last_reset', today);
     saveData();
     renderMedSchedule();
