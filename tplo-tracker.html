@@ -759,8 +759,12 @@
   <!-- ===== MEDS TAB ===== -->
   <div id="tab-content-meds" class="hidden">
 
-    <div class="card">
-      <div class="card-title"><span class="icon">➕</span> Add Medication</div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="toggleAddMedForm()" id="addMedToggleBtn">＋ Add Medication</button>
+    </div>
+
+    <div class="card" id="addMedForm" style="display:none; margin-top:-8px;">
+      <div class="card-title" style="margin-bottom:14px"><span class="icon">➕</span> Add Medication</div>
       <div class="form-grid">
         <div class="form-row">
           <label>Medication Name</label>
@@ -796,8 +800,9 @@
         <label>Notes / Instructions</label>
         <input type="text" id="medNotes" placeholder="e.g. Give with small meal, taper after 7 days" />
       </div>
-      <div style="display:flex;justify-content:flex-end">
-        <button class="btn btn-primary" onclick="addMed()">Add Medication</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="toggleAddMedForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="addMedAndCollapse()">Add Medication</button>
       </div>
     </div>
 
