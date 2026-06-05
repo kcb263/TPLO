@@ -1263,6 +1263,7 @@ function addMedAndCollapse() {
 }
 
 
+function deleteMed(id) {
   if (!confirm('Remove this medication?')) return;
   state.medications = state.medications.filter(m => m.id !== id);
   saveData();
