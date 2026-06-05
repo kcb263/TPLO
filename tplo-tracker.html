@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TPLO Recovery Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --surface: #ffffff;
+    --surface2: #f0ece4;
+    --border: #e0d8cc;
+    --text: #2a2520;
+    --text-muted: #8a7f74;
+    --accent: #c07a45;
+    --accent-light: #f5e9de;
+    --accent-dark: #9a5f32;
+    --green: #4a7c59;
+    --green-light: #e4f0e8;
+    --red: #c04a45;
+    --red-light: #f5e0de;
+    --blue: #4a6b9c;
+    --blue-light: #dde7f5;
+    --yellow: #c0963a;
+    --yellow-light: #faf0dc;
+    --shadow: 0 2px 12px rgba(42,37,32,0.08);
+    --shadow-lg: 0 8px 32px rgba(42,37,32,0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  .header-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .paw-icon {
+    width: 44px; height: 44px;
+    background: var(--accent-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .header-text .subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .day-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(192,122,69,0.3);
+  }
+
+  .tab-btn:hover:not(.active) {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .icon {
+    font-size: 1.1rem;
+  }
+
+  /* Form elements */
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  input[type="text"], input[type="number"], input[type="time"],
+  input[type="date"], textarea, select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    background: white;
+  }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { margin-bottom: 14px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+  .btn-danger {
+    background: var(--red-light);
+    color: var(--red);
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+  .btn-danger:hover { background: var(--red); color: white; }
+
+  .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
+
+  /* Severity / scale pickers */
+  .scale-picker {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .scale-btn {
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+
+  .scale-btn.selected-1, .scale-btn.selected-2 { border-color: var(--green); background: var(--green-light); color: var(--green); }
+  .scale-btn.selected-3, .scale-btn.selected-4 { border-color: var(--yellow); background: var(--yellow-light); color: var(--yellow); }
+  .scale-btn.selected-5 { border-color: var(--red); background: var(--red-light); color: var(--red); }
+
+  /* Tags */
+  .tag-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag-btn {
+    padding: 5px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+
+  .tag-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    font-weight: 500;
+  }
+
+  /* Log entries */
+  .log-entry {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    background: var(--bg);
+    margin-bottom: 10px;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .log-entry:last-child { margin-bottom: 0; }
+
+  .log-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .log-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .log-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .log-badge {
+    font-size: 0.72rem;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .badge-symptom { background: var(--red-light); color: var(--red); }
+  .badge-behavior { background: var(--blue-light); color: var(--blue); }
+  .badge-medication { background: var(--green-light); color: var(--green); }
+  .badge-general { background: var(--yellow-light); color: var(--yellow); }
+
+  .log-body { font-size: 0.88rem; line-height: 1.5; }
+
+  .log-tags {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px;
+  }
+  .log-tag {
+    font-size: 0.72rem;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 2px 8px;
+    color: var(--text-muted);
+  }
+
+  .severity-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    margin-right: 4px;
+  }
+  .sev-1, .sev-2 { background: var(--green); }
+  .sev-3, .sev-4 { background: var(--yellow); }
+  .sev-5 { background: var(--red); }
+
+  /* Medication schedule */
+  .med-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    background: var(--bg);
+    gap: 10px;
+  }
+
+  .med-info { flex: 1; }
+  .med-name { font-weight: 600; font-size: 0.9rem; }
+  .med-details { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+  .med-actions { display: flex; gap: 6px; align-items: center; }
+
+  .check-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--green);
+    background: white;
+    color: var(--green);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .check-btn.given {
+    background: var(--green);
+    color: white;
+  }
+
+  .check-btn:hover { transform: scale(1.04); }
+
+  /* Summary / stats */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Recovery phase banner */
+  .phase-banner {
+    background: linear-gradient(135deg, var(--accent-light) 0%, #fdf6f0 100%);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+
+  .phase-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .phase-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+  }
+
+  .phase-tip {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Milestones */
+  .milestone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .milestone-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .milestone-item.achieved {
+    border-color: var(--green);
+    background: var(--green-light);
+  }
+
+  .milestone-check {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    transition: all 0.15s;
+  }
+
+  .milestone-item.achieved .milestone-check {
+    background: var(--green);
+    border-color: var(--green);
+    color: white;
+  }
+
+  .milestone-text { font-size: 0.88rem; flex: 1; }
+  .milestone-day { font-size: 0.75rem; color: var(--text-muted); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+  .empty-state .empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+  /* Section divider */
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    margin-top: 4px;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .filter-chip {
+    padding: 4px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: white;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-chip.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
+  .hidden { display: none !important; }
+
+  /* Pain scale visual */
+  .pain-visual {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .pain-pip {
+    height: 6px;
+    flex: 1;
+    border-radius: 3px;
+    background: var(--border);
+  }
+  .pain-pip.filled-1, .pain-pip.filled-2 { background: var(--green); }
+  .pain-pip.filled-3, .pain-pip.filled-4 { background: var(--yellow); }
+  .pain-pip.filled-5 { background: var(--red); }
+
+  .dog-name-edit {
+    background: none;
+    border: none;
+    border-bottom: 2px dashed var(--border);
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--text);
+    outline: none;
+    width: 180px;
+    cursor: text;
+  }
+  .dog-name-edit:focus { border-bottom-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="paw-icon">🐾</div>
+    <div class="header-text">
+      <h1><input class="dog-name-edit" id="dogNameInput" value="Coco" title="Click to edit name" /></h1>
+      <div class="subtitle">TPLO Recovery Tracker &nbsp;·&nbsp; Surgery: <span id="surgeryDateDisplay">—</span></div>
+    </div>
+    <div class="day-badge" id="dayBadge">Day 1</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Recovery Phase Banner -->
+  <div class="phase-banner" id="phaseBanner">
+    <div class="phase-label">Current Phase</div>
+    <div class="phase-title" id="phaseTitle">Week 1–2 · Acute Recovery</div>
+    <div class="phase-tip" id="phaseTip">Strict rest is critical. Limit activity to short bathroom breaks only. Keep the incision clean and dry. Swelling and discomfort are normal — monitor for excessive heat, discharge, or signs of infection.</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('log')" id="tab-log">📋 Log</button>
+    <button class="tab-btn" onclick="showTab('meds')" id="tab-meds">💊 Meds</button>
+    <button class="tab-btn" onclick="showTab('milestones')" id="tab-milestones">🏆 Goals</button>
+    <button class="tab-btn" onclick="showTab('summary')" id="tab-summary">📊 Summary</button>
+    <button class="tab-btn" onclick="showTab('settings')" id="tab-settings">⚙️ Setup</button>
+  </div>
+
+  <!-- ===== LOG TAB ===== -->
+  <div id="tab-content-log">
+
+    <!-- Quick Log Form -->
+    <div class="card">
+      <div class="card-title"><span class="icon">✍️</span> Add Entry</div>
+
+      <div class="form-row">
+        <label>Entry Type</label>
+        <div class="scale-picker" id="entryTypePicker">
+          <button class="tag-btn selected" onclick="selectType(this,'symptom')">🤕 Symptom</button>
+          <button class="tag-btn" onclick="selectType(this,'behavior')">🐕 Behavior</button>
+          <button class="tag-btn" onclick="selectType(this,'medication')">💊 Medication</button>
+          <button class="tag-btn" onclick="selectType(this,'general')">📝 General</button>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" id="entryDate" />
+        </div>
+        <div class="form-row">
+          <label>Time</label>
+          <input type="time" id="entryTime" />
+        </div>
+      </div>
+
+      <div class="form-row" id="painRow">
+        <label>Pain / Discomfort Level</label>
+        <div class="scale-picker" id="painPicker">
+          <button class="scale-btn" onclick="selectPain(this,1)">1 · None</button>
+          <button class="scale-btn" onclick="selectPain(this,2)">2 · Mild</button>
+          <button class="scale-btn" onclick="selectPain(this,3)">3 · Moderate</button>
+          <button class="scale-btn" onclick="selectPain(this,4)">4 · Significant</button>
+          <button class="scale-btn" onclick="selectPain(this,5)">5 · Severe</button>
+        </div>
+      </div>
+
+      <div class="form-row" id="symptomTagsRow">
+        <label>Symptoms Observed</label>
+        <div class="tag-picker" id="symptomTags">
+          <button class="tag-btn" onclick="toggleTag(this)">Limping</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Swelling</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Redness</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Discharge</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Licking incision</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Weight bearing</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Not weight bearing</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Whimpering</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Restless</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Trembling</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Vomiting</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Loss of appetite</button>
+        </div>
+      </div>
+
+      <div class="form-row" id="behaviorTagsRow" style="display:none">
+        <label>Behaviors</label>
+        <div class="tag-picker" id="behaviorTags">
+          <button class="tag-btn" onclick="toggleTag(this)">Alert</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Eating well</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Drinking well</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Sleeping</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Agitated</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Calm</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Trying to stand</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Used bathroom</button>
+          <button class="tag-btn" onclick="toggleTag(this)">Playful</button>
+        </div>
+      </div>
+
+      <div class="form-row" id="medTagsRow" style="display:none">
+        <label>Medication Given</label>
+        <div class="tag-picker" id="medTags">
+          <!-- Dynamically populated from med schedule -->
+          <span id="medTagsEmpty" style="font-size:0.82rem;color:var(--text-muted)">Add medications in the Meds tab first.</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea id="entryNotes" placeholder="Describe what you observed…"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
+        <button class="btn btn-primary" onclick="addEntry()">Save Entry</button>
+      </div>
+    </div>
+
+    <!-- Log List -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> Log History</div>
+      <div class="filter-bar">
+        <button class="filter-chip active" onclick="filterLog(this,'all')">All</button>
+        <button class="filter-chip" onclick="filterLog(this,'symptom')">🤕 Symptoms</button>
+        <button class="filter-chip" onclick="filterLog(this,'behavior')">🐕 Behavior</button>
+        <button class="filter-chip" onclick="filterLog(this,'medication')">💊 Meds</button>
+        <button class="filter-chip" onclick="filterLog(this,'general')">📝 General</button>
+      </div>
+      <div id="logList">
+        <div class="empty-state"><div class="empty-icon">📋</div>No entries yet. Add your first log entry above.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== MEDS TAB ===== -->
+  <div id="tab-content-meds" class="hidden">
+
+    <div class="card">
+      <div class="card-title"><span class="icon">➕</span> Add Medication</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Medication Name</label>
+          <input type="text" id="medName" placeholder="e.g. Carprofen" />
+        </div>
+        <div class="form-row">
+          <label>Dose</label>
+          <input type="text" id="medDose" placeholder="e.g. 75mg" />
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Frequency</label>
+          <select id="medFreq">
+            <option>Once daily</option>
+            <option>Twice daily</option>
+            <option>Three times daily</option>
+            <option>Every 8 hours</option>
+            <option>Every 12 hours</option>
+            <option>As needed</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>With Food?</label>
+          <select id="medFood">
+            <option>Yes — with food</option>
+            <option>No — without food</option>
+            <option>Either</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Notes / Instructions</label>
+        <input type="text" id="medNotes" placeholder="e.g. Give with small meal, taper after 7 days" />
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="addMed()">Add Medication</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💊</span> Today's Medication Schedule</div>
+      <div class="section-label">Tap "Given" when administered</div>
+      <div id="medSchedule">
+        <div class="empty-state"><div class="empty-icon">💊</div>No medications added yet.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> Medication Log</div>
+      <div id="medLog">
+        <div class="empty-state"><div class="empty-icon">📅</div>No medication administrations logged yet.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== MILESTONES TAB ===== -->
+  <div id="tab-content-milestones" class="hidden">
+    <div class="card">
+      <div class="card-title"><span class="icon">🏆</span> Recovery Milestones</div>
+      <div class="section-label">Tap to mark achieved</div>
+      <div class="milestone-list" id="milestoneList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🗓️</span> Recovery Timeline</div>
+      <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.8">
+        <div><strong style="color:var(--text)">Days 1–14</strong> — Strict rest, short leash walks for bathroom only. Incision monitoring. Keep e-collar on.</div>
+        <div style="margin-top:10px"><strong style="color:var(--text)">Weeks 2–4</strong> — Suture/staple removal (~14 days). Continue rest. Possible start of very limited passive range-of-motion exercises.</div>
+        <div style="margin-top:10px"><strong style="color:var(--text)">Weeks 4–8</strong> — Gradual increase in controlled leash walks. Physical therapy exercises may begin. Follow-up X-ray.</div>
+        <div style="margin-top:10px"><strong style="color:var(--text)">Weeks 8–12</strong> — Continued progression. Longer walks, gentle swimming may be allowed. Second follow-up X-ray.</div>
+        <div style="margin-top:10px"><strong style="color:var(--text)">Months 4–6</strong> — Return to normal activity if healing confirmed. Full recovery typically 4–6 months.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SUMMARY TAB ===== -->
+  <div id="tab-content-summary" class="hidden">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> Recovery Overview</div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="statDays">1</div>
+          <div class="stat-label">Days Post-Op</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statEntries">0</div>
+          <div class="stat-label">Log Entries</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statMeds">0</div>
+          <div class="stat-label">Meds Today</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> Pain Trend (Last 7 Days)</div>
+      <canvas id="painChart" height="120" style="width:100%"></canvas>
+      <div id="painChartEmpty" class="empty-state" style="padding:20px"><div class="empty-icon">📈</div>Log pain levels to see trend.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🚨</span> When to Call Your Vet</div>
+      <div style="font-size:0.85rem;line-height:1.8;color:var(--text-muted)">
+        <div>⚠️ &nbsp;Excessive swelling, redness, or heat around incision</div>
+        <div>⚠️ &nbsp;Foul odor or discharge from the incision site</div>
+        <div>⚠️ &nbsp;Sutures/staples coming loose or incision opening</div>
+        <div>⚠️ &nbsp;Pain level 4–5 that isn't managed by medication</div>
+        <div>⚠️ &nbsp;Refusal to eat or drink for more than 24 hours</div>
+        <div>⚠️ &nbsp;Vomiting or diarrhea lasting more than 12 hours</div>
+        <div>⚠️ &nbsp;Sudden worsening of lameness after improvement</div>
+        <div>⚠️ &nbsp;Pale gums, labored breathing, or collapse</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📤</span> Export</div>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px">Download your complete recovery log as a text file to share with your vet.</p>
+      <button class="btn btn-primary" onclick="exportLog()">Download Recovery Log</button>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS TAB ===== -->
+  <div id="tab-content-settings" class="hidden">
+    <div class="card">
+      <div class="card-title"><span class="icon">⚙️</span> Setup</div>
+      <div class="form-row">
+        <label>Dog's Name</label>
+        <input type="text" id="settingsDogName" value="Coco" oninput="updateDogName(this.value)" />
+      </div>
+      <div class="form-row">
+        <label>Surgery Date</label>
+        <input type="date" id="surgeryDate" onchange="updateSurgeryDate(this.value)" />
+      </div>
+      <div class="form-row">
+        <label>Surgeon / Vet Name</label>
+        <input type="text" id="vetName" placeholder="e.g. Dr. Smith" />
+      </div>
+      <div class="form-row">
+        <label>Vet Phone</label>
+        <input type="text" id="vetPhone" placeholder="e.g. (410) 555-1234" />
+      </div>
+      <div class="form-row">
+        <label>Emergency / After-Hours</label>
+        <input type="text" id="vetEmergency" placeholder="e.g. (410) 555-5678" />
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// =========== STATE ===========
+let state = {
+  dogName: 'Coco',
+  surgeryDate: '',
+  vetName: '',
+  vetPhone: '',
+  vetEmergency: '',
+  entries: [],
+  medications: [],
+  medAdministrations: [],
+  milestones: [
+    { id: 1, text: 'First bathroom break outside', day: 'Day 1–2', achieved: false },
+    { id: 2, text: 'Eating and drinking on own', day: 'Day 1–3', achieved: false },
+    { id: 3, text: 'Sleeping comfortably through night', day: 'Day 2–5', achieved: false },
+    { id: 4, text: 'Incision clean — no redness/swelling', day: 'Day 3–7', achieved: false },
+    { id: 5, text: 'Pain well-managed on medication', day: 'Day 3–7', achieved: false },
+    { id: 6, text: 'Suture/staple removal completed', day: 'Day 14', achieved: false },
+    { id: 7, text: 'Toe-touching / slight weight bearing', day: 'Week 2–3', achieved: false },
+    { id: 8, text: 'Walking on leash (5 min)', day: 'Week 4–5', achieved: false },
+    { id: 9, text: 'Walking on leash (15 min)', day: 'Week 6–8', achieved: false },
+    { id: 10, text: '8-week follow-up X-ray — healing confirmed', day: 'Week 8', achieved: false },
+    { id: 11, text: 'Off pain medications', day: 'Week 4–6', achieved: false },
+    { id: 12, text: 'Running / playing freely', day: 'Month 4–6', achieved: false },
+  ]
+};
+
+let currentType = 'symptom';
+let selectedPain = null;
+let selectedTags = new Set();
+let logFilter = 'all';
+
+// =========== INIT ===========
+function init() {
+  loadData();
+  const now = new Date();
+  document.getElementById('entryDate').value = toDateStr(now);
+  document.getElementById('entryTime').value = toTimeStr(now);
+  if (!state.surgeryDate) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    state.surgeryDate = toDateStr(yesterday);
+    document.getElementById('surgeryDate').value = state.surgeryDate;
+    saveData();
+  } else {
+    document.getElementById('surgeryDate').value = state.surgeryDate;
+  }
+  document.getElementById('dogNameInput').value = state.dogName;
+  document.getElementById('settingsDogName').value = state.dogName;
+  document.getElementById('vetName').value = state.vetName || '';
+  document.getElementById('vetPhone').value = state.vetPhone || '';
+  document.getElementById('vetEmergency').value = state.vetEmergency || '';
+  updateDayBadge();
+  updatePhase();
+  renderMilestones();
+  renderLog();
+  renderMedSchedule();
+  renderMedLog();
+  updateStats();
+}
+
+function toDateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function toTimeStr(d) {
+  return d.toTimeString().slice(0,5);
+}
+
+// =========== STORAGE ===========
+function saveData() {
+  localStorage.setItem('tplo_tracker', JSON.stringify(state));
+}
+
+function loadData() {
+  const raw = localStorage.getItem('tplo_tracker');
+  if (raw) {
+    try { state = { ...state, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+
+// =========== TABS ===========
+function showTab(name) {
+  ['log','meds','milestones','summary','settings'].forEach(t => {
+    document.getElementById('tab-content-'+t).classList.toggle('hidden', t !== name);
+    document.getElementById('tab-'+t).classList.toggle('active', t === name);
+  });
+  if (name === 'summary') updateStats();
+}
+
+// =========== ENTRY FORM ===========
+function selectType(el, type) {
+  currentType = type;
+  document.querySelectorAll('#entryTypePicker .tag-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('painRow').style.display = (type === 'symptom') ? '' : 'none';
+  document.getElementById('symptomTagsRow').style.display = (type === 'symptom') ? '' : 'none';
+  document.getElementById('behaviorTagsRow').style.display = (type === 'behavior') ? '' : 'none';
+  document.getElementById('medTagsRow').style.display = (type === 'medication') ? '' : 'none';
+  selectedTags.clear();
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPain = null;
+  document.querySelectorAll('#painPicker .scale-btn').forEach(b => { b.className = 'scale-btn'; });
+  if (type === 'medication') populateMedTags();
+}
+
+function selectPain(el, val) {
+  selectedPain = val;
+  document.querySelectorAll('#painPicker .scale-btn').forEach(b => { b.className = 'scale-btn'; });
+  el.className = `scale-btn selected-${val}`;
+}
+
+function toggleTag(el) {
+  const txt = el.textContent.trim();
+  if (selectedTags.has(txt)) {
+    selectedTags.delete(txt);
+    el.classList.remove('selected');
+  } else {
+    selectedTags.add(txt);
+    el.classList.add('selected');
+  }
+}
+
+function populateMedTags() {
+  const container = document.getElementById('medTags');
+  const empty = document.getElementById('medTagsEmpty');
+  if (state.medications.length === 0) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  // clear old
+  container.querySelectorAll('.tag-btn').forEach(b => b.remove());
+  state.medications.forEach(med => {
+    const b = document.createElement('button');
+    b.className = 'tag-btn';
+    b.textContent = med.name + (med.dose ? ` (${med.dose})` : '');
+    b.onclick = () => toggleTag(b);
+    container.appendChild(b);
+  });
+}
+
+function clearForm() {
+  document.getElementById('entryNotes').value = '';
+  selectedTags.clear();
+  selectedPain = null;
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#painPicker .scale-btn').forEach(b => { b.className = 'scale-btn'; });
+  // re-select current type
+  document.querySelectorAll('#entryTypePicker .tag-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(currentType)) b.classList.add('selected');
+  });
+  const now = new Date();
+  document.getElementById('entryDate').value = toDateStr(now);
+  document.getElementById('entryTime').value = toTimeStr(now);
+}
+
+function addEntry() {
+  const notes = document.getElementById('entryNotes').value.trim();
+  const date = document.getElementById('entryDate').value;
+  const time = document.getElementById('entryTime').value;
+  if (!notes && selectedTags.size === 0) {
+    alert('Please add notes or select at least one tag.');
+    return;
+  }
+  const entry = {
+    id: Date.now(),
+    type: currentType,
+    date,
+    time,
+    pain: selectedPain,
+    tags: Array.from(selectedTags),
+    notes,
+  };
+  state.entries.unshift(entry);
+  saveData();
+  clearForm();
+  renderLog();
+  updateStats();
+}
+
+// =========== LOG RENDER ===========
+function filterLog(el, filter) {
+  logFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderLog();
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  const entries = state.entries.filter(e => logFilter === 'all' || e.type === logFilter);
+  if (entries.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No entries found.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => {
+    const badgeClass = { symptom:'badge-symptom', behavior:'badge-behavior', medication:'badge-medication', general:'badge-general' }[e.type] || 'badge-general';
+    const typeLabel = { symptom:'🤕 Symptom', behavior:'🐕 Behavior', medication:'💊 Medication', general:'📝 General' }[e.type] || e.type;
+    const painHtml = e.pain ? `<span class="severity-dot sev-${e.pain}"></span> Pain ${e.pain}/5 &nbsp;` : '';
+    const tagsHtml = e.tags.length ? `<div class="log-tags">${e.tags.map(t => `<span class="log-tag">${t}</span>`).join('')}</div>` : '';
+    const dateStr = e.date ? `${e.date} ` : '';
+    return `<div class="log-entry">
+      <div class="log-header">
+        <div class="log-meta">
+          <span class="log-badge ${badgeClass}">${typeLabel}</span>
+          <span class="log-time">${dateStr}${e.time || ''}</span>
+        </div>
+        <button class="btn btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+      </div>
+      <div class="log-body">
+        ${painHtml}${e.notes}
+        ${tagsHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  saveData();
+  renderLog();
+  updateStats();
+}
+
+// =========== MEDICATIONS ===========
+function addMed() {
+  const name = document.getElementById('medName').value.trim();
+  if (!name) { alert('Enter a medication name.'); return; }
+  const med = {
+    id: Date.now(),
+    name,
+    dose: document.getElementById('medDose').value.trim(),
+    freq: document.getElementById('medFreq').value,
+    food: document.getElementById('medFood').value,
+    notes: document.getElementById('medNotes').value.trim(),
+    givenToday: false,
+    givenTimes: [],
+  };
+  state.medications.push(med);
+  saveData();
+  document.getElementById('medName').value = '';
+  document.getElementById('medDose').value = '';
+  document.getElementById('medNotes').value = '';
+  renderMedSchedule();
+  renderMedLog();
+}
+
+function toggleMedGiven(id) {
+  const med = state.medications.find(m => m.id === id);
+  if (!med) return;
+  med.givenToday = !med.givenToday;
+  if (med.givenToday) {
+    const now = new Date();
+    const logEntry = {
+      medId: id,
+      medName: med.name,
+      dose: med.dose,
+      date: toDateStr(now),
+      time: toTimeStr(now),
+    };
+    state.medAdministrations.push(logEntry);
+    // also add to general log
+    state.entries.unshift({
+      id: Date.now(),
+      type: 'medication',
+      date: logEntry.date,
+      time: logEntry.time,
+      pain: null,
+      tags: [med.name + (med.dose ? ` (${med.dose})` : '')],
+      notes: `Administered: ${med.name}${med.dose ? ' ' + med.dose : ''}`,
+    });
+  }
+  saveData();
+  renderMedSchedule();
+  renderMedLog();
+  renderLog();
+  updateStats();
+}
+
+function deleteMed(id) {
+  if (!confirm('Remove this medication?')) return;
+  state.medications = state.medications.filter(m => m.id !== id);
+  saveData();
+  renderMedSchedule();
+}
+
+function renderMedSchedule() {
+  const el = document.getElementById('medSchedule');
+  if (state.medications.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💊</div>No medications added yet.</div>';
+    return;
+  }
+  el.innerHTML = state.medications.map(med => `
+    <div class="med-row">
+      <div class="med-info">
+        <div class="med-name">${med.name}${med.dose ? ' · ' + med.dose : ''}</div>
+        <div class="med-details">${med.freq} · ${med.food}${med.notes ? ' · ' + med.notes : ''}</div>
+      </div>
+      <div class="med-actions">
+        <button class="check-btn ${med.givenToday ? 'given' : ''}" onclick="toggleMedGiven(${med.id})">
+          ${med.givenToday ? '✓ Given' : 'Mark Given'}
+        </button>
+        <button class="btn btn-danger" onclick="deleteMed(${med.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMedLog() {
+  const el = document.getElementById('medLog');
+  const logs = [...state.medAdministrations].reverse();
+  if (logs.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div>No administrations logged.</div>';
+    return;
+  }
+  el.innerHTML = logs.slice(0,30).map(l =>
+    `<div class="log-entry">
+      <div class="log-header">
+        <div class="log-meta">
+          <span class="log-badge badge-medication">💊 ${l.medName}</span>
+          <span class="log-time">${l.date} ${l.time}</span>
+        </div>
+      </div>
+      <div class="log-body">${l.dose || 'Dose not specified'}</div>
+    </div>`
+  ).join('');
+}
+
+// =========== MILESTONES ===========
+function renderMilestones() {
+  const list = document.getElementById('milestoneList');
+  list.innerHTML = state.milestones.map(m => `
+    <div class="milestone-item ${m.achieved ? 'achieved' : ''}" onclick="toggleMilestone(${m.id})">
+      <div class="milestone-check">${m.achieved ? '✓' : ''}</div>
+      <div class="milestone-text">${m.text}</div>
+      <div class="milestone-day">${m.day}</div>
+    </div>
+  `).join('');
+}
+
+function toggleMilestone(id) {
+  const m = state.milestones.find(x => x.id === id);
+  if (m) m.achieved = !m.achieved;
+  saveData();
+  renderMilestones();
+}
+
+// =========== DAY / PHASE ===========
+function updateDayBadge() {
+  if (!state.surgeryDate) return;
+  const surg = new Date(state.surgeryDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  surg.setHours(0,0,0,0);
+  const diff = Math.floor((today - surg) / 86400000);
+  const dayNum = diff + 1;
+  document.getElementById('dayBadge').textContent = `Day ${dayNum}`;
+  document.getElementById('statDays').textContent = dayNum;
+  document.getElementById('surgeryDateDisplay').textContent = state.surgeryDate;
+}
+
+function updatePhase() {
+  if (!state.surgeryDate) return;
+  const surg = new Date(state.surgeryDate + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.floor((today - surg) / 86400000) + 1;
+  let title, tip;
+  if (days <= 14) {
+    title = 'Week 1–2 · Acute Recovery';
+    tip = 'Strict rest is critical. Limit activity to short leash walks for bathroom only. Keep the incision clean and dry. Swelling and discomfort are normal — monitor for excessive heat, discharge, or signs of infection.';
+  } else if (days <= 28) {
+    title = 'Week 2–4 · Early Healing';
+    tip = 'Sutures/staples should be removed around day 14. Continue strict rest. Bone is beginning to heal. Watch for any signs of infection or swelling at the incision site.';
+  } else if (days <= 56) {
+    title = 'Week 4–8 · Active Recovery';
+    tip = 'Gradual increase in controlled leash walks. Physical therapy exercises may begin. Your vet may take follow-up X-rays to assess bone healing.';
+  } else if (days <= 84) {
+    title = 'Week 8–12 · Progressive Rehab';
+    tip = 'Continued progression with longer walks. Gentle swimming may be allowed. Second follow-up X-ray. Monitor gait and weight bearing.';
+  } else {
+    title = 'Month 4–6 · Return to Activity';
+    tip = 'Return to normal activity if healing is confirmed by your vet. Full recovery typically takes 4–6 months. Continue monitoring for any lameness.';
+  }
+  document.getElementById('phaseTitle').textContent = title;
+  document.getElementById('phaseTip').textContent = tip;
+}
+
+function updateSurgeryDate(val) {
+  state.surgeryDate = val;
+  saveData();
+  updateDayBadge();
+  updatePhase();
+  document.getElementById('surgeryDateDisplay').textContent = val;
+}
+
+function updateDogName(val) {
+  state.dogName = val;
+  document.getElementById('dogNameInput').value = val;
+  saveData();
+}
+
+// =========== STATS ===========
+function updateStats() {
+  document.getElementById('statEntries').textContent = state.entries.length;
+  const today = toDateStr(new Date());
+  const medsGiven = state.medAdministrations.filter(m => m.date === today).length;
+  document.getElementById('statMeds').textContent = medsGiven;
+  updateDayBadge();
+  drawPainChart();
+}
+
+function drawPainChart() {
+  const canvas = document.getElementById('painChart');
+  const empty = document.getElementById('painChartEmpty');
+  const painEntries = state.entries.filter(e => e.pain && e.date).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  if (painEntries.length < 2) { canvas.style.display='none'; empty.style.display=''; return; }
+  canvas.style.display=''; empty.style.display='none';
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 400; const H = 120;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0,0,W,H);
+  // grid lines
+  ctx.strokeStyle = '#e0d8cc'; ctx.lineWidth = 1;
+  for (let i=1;i<=5;i++) { const y = H - (i/5)*H + 10; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // data
+  const pts = painEntries.slice(-14);
+  const xs = pts.map((_,i) => 20 + i * ((W-40)/(pts.length-1||1)));
+  const ys = pts.map(p => H - (p.pain/5)*(H-20) - 10);
+  ctx.beginPath(); ctx.strokeStyle='#c07a45'; ctx.lineWidth=2.5; ctx.lineJoin='round';
+  xs.forEach((x,i) => i===0 ? ctx.moveTo(x,ys[i]) : ctx.lineTo(x,ys[i]));
+  ctx.stroke();
+  xs.forEach((x,i) => {
+    ctx.beginPath();
+    const colors = ['','#4a7c59','#4a7c59','#c0963a','#c0963a','#c04a45'];
+    ctx.fillStyle = colors[pts[i].pain];
+    ctx.arc(x,ys[i],5,0,Math.PI*2); ctx.fill();
+  });
+}
+
+// =========== SETTINGS ===========
+function saveSettings() {
+  state.dogName = document.getElementById('settingsDogName').value.trim() || 'Coco';
+  state.vetName = document.getElementById('vetName').value.trim();
+  state.vetPhone = document.getElementById('vetPhone').value.trim();
+  state.vetEmergency = document.getElementById('vetEmergency').value.trim();
+  updateDogName(state.dogName);
+  saveData();
+  alert('Settings saved!');
+}
+
+function clearAllData() {
+  if (!confirm('Clear ALL data? This cannot be undone.')) return;
+  localStorage.removeItem('tplo_tracker');
+  location.reload();
+}
+
+// =========== EXPORT ===========
+function exportLog() {
+  const lines = [
+    `TPLO RECOVERY LOG — ${state.dogName}`,
+    `Surgery Date: ${state.surgeryDate}`,
+    `Generated: ${new Date().toLocaleString()}`,
+    state.vetName ? `Vet: ${state.vetName} — ${state.vetPhone}` : '',
+    '',
+    '=== MEDICATIONS ===',
+    ...state.medications.map(m => `• ${m.name} ${m.dose} — ${m.freq} — ${m.food}${m.notes ? ' — ' + m.notes : ''}`),
+    '',
+    '=== LOG ENTRIES ===',
+    ...state.entries.map(e => [
+      `[${e.date} ${e.time}] [${e.type.toUpperCase()}]${e.pain ? ' Pain: '+e.pain+'/5' : ''}`,
+      e.tags.length ? '  Tags: ' + e.tags.join(', ') : '',
+      e.notes ? '  ' + e.notes : '',
+    ].filter(Boolean).join('\n')),
+    '',
+    '=== MILESTONES ===',
+    ...state.milestones.map(m => `[${m.achieved ? 'X' : ' '}] ${m.text} (${m.day})`),
+  ].filter(l => l !== null).join('\n');
+
+  const blob = new Blob([lines], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${state.dogName}_TPLO_Log_${toDateStr(new Date())}.txt`;
+  a.click();
+}
+
+// =========== RUN ===========
+window.addEventListener('load', init);
+
+// Reset med "given" status at midnight (simple check)
+setInterval(() => {
+  const today = toDateStr(new Date());
+  const lastReset = localStorage.getItem('tplo_last_reset');
+  if (lastReset !== today) {
+    state.medications.forEach(m => m.givenToday = false);
+    localStorage.setItem('tplo_last_reset', today);
+    saveData();
+    renderMedSchedule();
+  }
+}, 60000);
+</script>
+</body>
+</html>
