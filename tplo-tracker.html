@@ -55,27 +55,32 @@
     margin: 0 auto;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 0;
   }
 
   .paw-icon {
-    width: 44px; height: 44px;
+    width: 40px; height: 40px;
     background: var(--accent-light);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
+    font-size: 20px;
     flex-shrink: 0;
   }
 
   .header-text h1 {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--text);
     line-height: 1.2;
   }
 
   .header-text .subtitle {
-    font-size: 0.78rem;
+    font-size: 0.73rem;
     color: var(--text-muted);
     margin-top: 2px;
     font-weight: 400;
@@ -378,31 +383,31 @@
 
   .med-actions { display: flex; gap: 6px; align-items: center; }
 
-  .dose-tracker {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   .dose-pips {
     display: flex;
-    gap: 5px;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .dose-slot {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 4px;
   }
 
   .dose-pip {
-    width: 28px; height: 28px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     border: 2px solid var(--green);
     background: white;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--green);
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s;
-    position: relative;
+    flex-shrink: 0;
   }
 
   .dose-pip.given {
@@ -412,29 +417,26 @@
 
   .dose-pip:hover:not(.given) {
     background: var(--green-light);
-    transform: scale(1.1);
+    transform: scale(1.08);
+  }
+
+  .dose-pip-time {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .dose-label {
     font-size: 0.78rem;
     color: var(--text-muted);
     white-space: nowrap;
+    margin-top: 4px;
   }
 
   .dose-label.all-given {
     color: var(--green);
     font-weight: 600;
-  }
-
-  .dose-pip-time {
-    position: absolute;
-    bottom: -18px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.6rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-    pointer-events: none;
   }
 
   /* Summary / stats */
@@ -608,10 +610,11 @@
     border: none;
     border-bottom: 2px dashed var(--border);
     font-family: 'DM Serif Display', serif;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--text);
     outline: none;
-    width: 180px;
+    max-width: 160px;
+    width: 100%;
     cursor: text;
   }
   .dog-name-edit:focus { border-bottom-color: var(--accent); }
@@ -1241,7 +1244,25 @@ function recordDose(medId, doseIndex) {
   updateStats();
 }
 
-function deleteMed(id) {
+function toggleAddMedForm() {
+  const form = document.getElementById('addMedForm');
+  const btn = document.getElementById('addMedToggleBtn');
+  const open = form.style.display === 'none';
+  form.style.display = open ? '' : 'none';
+  btn.textContent = open ? '✕ Cancel' : '＋ Add Medication';
+  if (open) document.getElementById('medName').focus();
+}
+
+function addMedAndCollapse() {
+  addMed();
+  // addMed() already validates; if it succeeded the name field is cleared
+  if (!document.getElementById('medName').value) {
+    document.getElementById('addMedForm').style.display = 'none';
+    document.getElementById('addMedToggleBtn').textContent = '＋ Add Medication';
+  }
+}
+
+
   if (!confirm('Remove this medication?')) return;
   state.medications = state.medications.filter(m => m.id !== id);
   saveData();
@@ -1261,24 +1282,25 @@ function renderMedSchedule() {
     const allGiven = givenCount >= required;
     const pips = Array.from({length: required}, (_, i) => {
       const time = given[i];
-      return `<div class="dose-pip ${time ? 'given' : ''}" onclick="recordDose(${med.id}, ${i})" title="${time ? 'Given at ' + time + ' (tap to undo)' : 'Tap to record dose ' + (i+1)}">
-        ${time ? '✓' : (i+1)}
-        ${time ? `<span class="dose-pip-time">${time}</span>` : ''}
+      return `<div class="dose-slot">
+        <div class="dose-pip ${time ? 'given' : ''}" onclick="recordDose(${med.id}, ${i})" title="${time ? 'Given at ' + time + ' — tap to undo' : 'Tap to record dose ' + (i+1)}">
+          ${time ? '✓' : (i+1)}
+        </div>
+        <div class="dose-pip-time">${time || ''}</div>
       </div>`;
     }).join('');
-    return `<div class="med-row" style="padding-bottom: ${required > 1 ? '24px' : '12px'}">
-      <div class="med-info">
-        <div class="med-name">${med.name}${med.dose ? ' · ' + med.dose : ''}</div>
-        <div class="med-details">${med.freq} · ${med.food}${med.notes ? ' · ' + med.notes : ''}</div>
+
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:8px;background:var(--bg);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div class="med-name">${med.name}${med.dose ? ' · ' + med.dose : ''}</div>
+          <div class="med-details" style="margin-top:4px">${med.freq} · ${med.food}${med.notes ? ' · ' + med.notes : ''}</div>
+        </div>
+        <button class="btn btn-danger" style="flex-shrink:0;padding:4px 10px;font-size:0.75rem;" onclick="deleteMed(${med.id})">Remove</button>
       </div>
-      <div class="med-actions" style="flex-direction:column;align-items:flex-end;gap:6px">
-        <div class="dose-tracker">
-          <div class="dose-pips">${pips}</div>
-        </div>
-        <div class="dose-label ${allGiven ? 'all-given' : ''}">
-          ${allGiven ? '✓ All doses given' : `${givenCount} of ${required} given`}
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteMed(${med.id})" style="margin-top:2px">Remove</button>
+      <div style="margin-top:12px;display:flex;align-items:flex-end;justify-content:space-between;">
+        <div class="dose-pips">${pips}</div>
+        <div class="dose-label ${allGiven ? 'all-given' : ''}">${allGiven ? '✓ All doses given' : `${givenCount} of ${required} given`}</div>
       </div>
     </div>`;
   }).join('');
