@@ -43,7 +43,7 @@
   header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 20px 24px;
+    padding: 12px 16px;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -80,10 +80,13 @@
   }
 
   .header-text .subtitle {
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 1px;
     font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .day-badge {
@@ -100,10 +103,10 @@
   main {
     max-width: 720px;
     margin: 0 auto;
-    padding: 24px 16px;
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 14px;
   }
 
   /* Tabs */
@@ -112,25 +115,29 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 4px;
-    gap: 4px;
+    padding: 3px;
+    gap: 3px;
     overflow-x: auto;
+    scrollbar-width: none;
   }
+
+  .tabs::-webkit-scrollbar { display: none; }
 
   .tab-btn {
     flex: 1;
-    padding: 9px 12px;
+    padding: 8px 6px;
     border: none;
     background: transparent;
     border-radius: var(--radius-sm);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-muted);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
-    display: flex; align-items: center; justify-content: center; gap: 5px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 0;
   }
 
   .tab-btn.active {
@@ -149,7 +156,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 16px;
     box-shadow: var(--shadow);
   }
 
@@ -198,7 +205,7 @@
 
   textarea { resize: vertical; min-height: 80px; }
 
-  .form-row { margin-bottom: 14px; }
+  .form-row { margin-bottom: 10px; }
 
   .form-grid {
     display: grid;
@@ -249,7 +256,10 @@
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .scale-picker::-webkit-scrollbar { display: none; }
 
   .scale-btn {
     padding: 6px 14px;
@@ -275,14 +285,15 @@
   }
 
   .tag-btn {
-    padding: 5px 12px;
+    padding: 5px 10px;
     border: 1.5px solid var(--border);
     border-radius: 20px;
     background: white;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.15s;
     font-weight: 400;
+    white-space: nowrap;
   }
 
   .tag-btn.selected {
@@ -476,28 +487,28 @@
     border: 1px solid var(--border);
     border-left: 4px solid var(--accent);
     border-radius: var(--radius);
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
 
   .phase-label {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--accent);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .phase-title {
     font-family: 'DM Serif Display', serif;
-    font-size: 1.1rem;
-    margin-bottom: 4px;
+    font-size: 1rem;
+    margin-bottom: 3px;
   }
 
   .phase-tip {
-    font-size: 0.83rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
   /* Milestones */
@@ -1357,7 +1368,8 @@ function updateDayBadge() {
   const dayNum = diff + 1;
   document.getElementById('dayBadge').textContent = `Day ${dayNum}`;
   document.getElementById('statDays').textContent = dayNum;
-  document.getElementById('surgeryDateDisplay').textContent = state.surgeryDate;
+  const formatted = surg.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  document.getElementById('surgeryDateDisplay').textContent = formatted;
 }
 
 function updatePhase() {
@@ -1391,7 +1403,6 @@ function updateSurgeryDate(val) {
   saveData();
   updateDayBadge();
   updatePhase();
-  document.getElementById('surgeryDateDisplay').textContent = val;
 }
 
 function updateDogName(val) {
