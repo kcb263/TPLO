@@ -619,7 +619,7 @@
   .dog-name-edit {
     background: none;
     border: none;
-    border-bottom: 2px dashed var(--border);
+    border-bottom: 2px solid transparent;
     font-family: 'DM Serif Display', serif;
     font-size: 1.3rem;
     color: var(--text);
@@ -627,8 +627,11 @@
     max-width: 160px;
     width: 100%;
     cursor: text;
+    transition: border-color 0.2s;
   }
-  .dog-name-edit:focus { border-bottom-color: var(--accent); }
+  .dog-name-edit:focus {
+    border-bottom-color: var(--accent);
+  }
 </style>
 </head>
 <body>
@@ -638,7 +641,7 @@
     <div class="paw-icon">🐾</div>
     <div class="header-text">
       <h1><input class="dog-name-edit" id="dogNameInput" value="Coco" title="Click to edit name" /></h1>
-      <div class="subtitle">Surgery: <span id="surgeryDateDisplay">—</span> &nbsp;·&nbsp; TPLO Recovery</div>
+      <div class="subtitle">Surgery <span id="surgeryDateDisplay">—</span> &nbsp;·&nbsp; TPLO Recovery</div>
     </div>
     <div class="day-badge" id="dayBadge">Day 1</div>
   </div>
@@ -1368,7 +1371,7 @@ function updateDayBadge() {
   const dayNum = diff + 1;
   document.getElementById('dayBadge').textContent = `Day ${dayNum}`;
   document.getElementById('statDays').textContent = dayNum;
-  const formatted = surg.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatted = surg.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   document.getElementById('surgeryDateDisplay').textContent = formatted;
 }
 
