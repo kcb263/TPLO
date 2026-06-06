@@ -30,6 +30,42 @@
     --radius-sm: 8px;
   }
 
+  body.dark {
+    --bg: #1a1714;
+    --surface: #242019;
+    --surface2: #2e2a24;
+    --border: #3a342c;
+    --text: #f0ebe3;
+    --text-muted: #9a8f82;
+    --accent: #d4895a;
+    --accent-light: #3a2818;
+    --accent-dark: #e8a070;
+    --green: #5a9c6e;
+    --green-light: #1a2e20;
+    --red: #d45a55;
+    --red-light: #2e1a18;
+    --blue: #6a8bc0;
+    --blue-light: #1a2238;
+    --yellow: #d4a84a;
+    --yellow-light: #2e2410;
+    --shadow: 0 2px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .dark-toggle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  .dark-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -450,20 +486,20 @@
     font-weight: 600;
   }
 
-  /* Summary / stats */
+  /* Summary stat grid — standalone, no card wrapper */
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
   }
 
   .stat-box {
-    background: var(--bg);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 14px;
+    padding: 14px 10px;
     text-align: center;
+    box-shadow: var(--shadow);
   }
 
   .stat-num {
@@ -474,11 +510,108 @@
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
     margin-top: 4px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  /* Pain by day bar rows */
+  .pain-day-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .pain-day-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    width: 52px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .pain-day-bar-wrap {
+    flex: 1;
+    height: 18px;
+    background: var(--surface2);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .pain-day-bar {
+    height: 100%;
+    border-radius: 9px;
+    transition: width 0.4s ease;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;
+    font-size: 0.65rem; font-weight: 700; color: white;
+  }
+  .pain-day-val {
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 28px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+
+  /* Symptom freq bars */
+  .symptom-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .symptom-name {
+    font-size: 0.78rem;
+    width: 130px;
+    flex-shrink: 0;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .symptom-bar-wrap {
+    flex: 1;
+    height: 14px;
+    background: var(--surface2);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .symptom-bar {
+    height: 100%;
+    border-radius: 7px;
+    background: var(--accent);
+    opacity: 0.7;
+    transition: width 0.4s ease;
+  }
+  .symptom-count {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    width: 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Milestone progress bar */
+  .milestone-progress-wrap {
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .milestone-progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+  }
+  .milestone-progress-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .milestone-progress-label span {
+    font-weight: 600;
+    color: var(--green);
   }
 
   /* Recovery phase banner */
@@ -643,6 +776,7 @@
       <h1><input class="dog-name-edit" id="dogNameInput" value="Coco" title="Click to edit name" /></h1>
       <div class="subtitle">Surgery <span id="surgeryDateDisplay">—</span> &nbsp;·&nbsp; TPLO Recovery</div>
     </div>
+    <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     <div class="day-badge" id="dayBadge">Day 1</div>
   </div>
 </header>
@@ -862,37 +996,53 @@
 
   <!-- ===== SUMMARY TAB ===== -->
   <div id="tab-content-summary" class="hidden">
-    <div class="card">
-      <div class="card-title"><span class="icon">📊</span> Recovery Overview</div>
-      <div class="stat-grid">
-        <div class="stat-box">
-          <div class="stat-num" id="statDays">1</div>
-          <div class="stat-label">Days Post-Op</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num" id="statEntries">0</div>
-          <div class="stat-label">Log Entries</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num" id="statMeds">0</div>
-          <div class="stat-label">Meds Today</div>
-        </div>
+
+    <!-- Stats row -->
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-num" id="statDays">1</div>
+        <div class="stat-label">Days Post-Op</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statEntries">0</div>
+        <div class="stat-label">Log Entries</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statMeds">0</div>
+        <div class="stat-label">Meds Today</div>
       </div>
     </div>
 
+    <!-- Milestone progress -->
     <div class="card">
-      <div class="card-title"><span class="icon">📈</span> Pain Trend (Last 7 Days)</div>
-      <canvas id="painChart" height="120" style="width:100%"></canvas>
-      <div id="painChartEmpty" class="empty-state" style="padding:20px"><div class="empty-icon">📈</div>Log pain levels to see trend.</div>
+      <div class="card-title"><span class="icon">🏆</span> Milestone Progress</div>
+      <div id="summaryMilestoneBar"></div>
     </div>
 
+    <!-- Pain by day -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> Pain by Day</div>
+      <div id="painByDay">
+        <div class="empty-state" style="padding:16px"><div class="empty-icon">📈</div>Log symptom entries with pain levels to see trend.</div>
+      </div>
+    </div>
+
+    <!-- Top symptoms -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> Most Logged Symptoms</div>
+      <div id="symptomFreq">
+        <div class="empty-state" style="padding:16px"><div class="empty-icon">🔍</div>Log symptom entries to see frequency.</div>
+      </div>
+    </div>
+
+    <!-- Vet checklist -->
     <div class="card">
       <div class="card-title"><span class="icon">🚨</span> When to Call Your Vet</div>
-      <div style="font-size:0.85rem;line-height:1.8;color:var(--text-muted)">
+      <div style="font-size:0.83rem;line-height:1.9;color:var(--text-muted)">
         <div>⚠️ &nbsp;Excessive swelling, redness, or heat around incision</div>
         <div>⚠️ &nbsp;Foul odor or discharge from the incision site</div>
         <div>⚠️ &nbsp;Sutures/staples coming loose or incision opening</div>
-        <div>⚠️ &nbsp;Pain level 4–5 that isn't managed by medication</div>
+        <div>⚠️ &nbsp;Pain level 4–5 not managed by medication</div>
         <div>⚠️ &nbsp;Refusal to eat or drink for more than 24 hours</div>
         <div>⚠️ &nbsp;Vomiting or diarrhea lasting more than 12 hours</div>
         <div>⚠️ &nbsp;Sudden worsening of lameness after improvement</div>
@@ -900,9 +1050,10 @@
       </div>
     </div>
 
+    <!-- Export -->
     <div class="card">
-      <div class="card-title"><span class="icon">📤</span> Export</div>
-      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px">Download your complete recovery log as a text file to share with your vet.</p>
+      <div class="card-title"><span class="icon">📤</span> Export Log</div>
+      <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:12px">Download the full recovery log as a text file to share with your vet.</p>
       <button class="btn btn-primary" onclick="exportLog()">Download Recovery Log</button>
     </div>
   </div>
@@ -984,6 +1135,7 @@ function freqToDoses(freq) {
 
 // =========== INIT ===========
 function init() {
+  loadDarkMode();
   loadData();
   const now = new Date();
   document.getElementById('entryDate').value = toDateStr(now);
@@ -1045,7 +1197,7 @@ function showTab(name) {
     document.getElementById('tab-content-'+t).classList.toggle('hidden', t !== name);
     document.getElementById('tab-'+t).classList.toggle('active', t === name);
   });
-  if (name === 'summary') updateStats();
+  if (name === 'summary') renderSummary();
 }
 
 // =========== ENTRY FORM ===========
@@ -1414,42 +1566,102 @@ function updateDogName(val) {
   saveData();
 }
 
-// =========== STATS ===========
+// =========== DARK MODE ===========
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('tplo_dark', isDark ? '1' : '0');
+  document.getElementById('darkToggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+function loadDarkMode() {
+  if (localStorage.getItem('tplo_dark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('darkToggle').textContent = '☀️';
+  }
+}
+
+// =========== STATS & SUMMARY ===========
 function updateStats() {
   document.getElementById('statEntries').textContent = state.entries.length;
   const today = toDateStr(new Date());
   const medsGiven = state.medAdministrations.filter(m => m.date === today).length;
   document.getElementById('statMeds').textContent = medsGiven;
   updateDayBadge();
-  drawPainChart();
+  renderSummary();
 }
 
-function drawPainChart() {
-  const canvas = document.getElementById('painChart');
-  const empty = document.getElementById('painChartEmpty');
-  const painEntries = state.entries.filter(e => e.pain && e.date).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  if (painEntries.length < 2) { canvas.style.display='none'; empty.style.display=''; return; }
-  canvas.style.display=''; empty.style.display='none';
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 400; const H = 120;
-  canvas.width = W; canvas.height = H;
-  ctx.clearRect(0,0,W,H);
-  // grid lines
-  ctx.strokeStyle = '#e0d8cc'; ctx.lineWidth = 1;
-  for (let i=1;i<=5;i++) { const y = H - (i/5)*H + 10; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-  // data
-  const pts = painEntries.slice(-14);
-  const xs = pts.map((_,i) => 20 + i * ((W-40)/(pts.length-1||1)));
-  const ys = pts.map(p => H - (p.pain/5)*(H-20) - 10);
-  ctx.beginPath(); ctx.strokeStyle='#c07a45'; ctx.lineWidth=2.5; ctx.lineJoin='round';
-  xs.forEach((x,i) => i===0 ? ctx.moveTo(x,ys[i]) : ctx.lineTo(x,ys[i]));
-  ctx.stroke();
-  xs.forEach((x,i) => {
-    ctx.beginPath();
-    const colors = ['','#4a7c59','#4a7c59','#c0963a','#c0963a','#c04a45'];
-    ctx.fillStyle = colors[pts[i].pain];
-    ctx.arc(x,ys[i],5,0,Math.PI*2); ctx.fill();
+function renderSummary() {
+  renderMilestoneProgress();
+  renderPainByDay();
+  renderSymptomFreq();
+}
+
+function renderMilestoneProgress() {
+  const el = document.getElementById('summaryMilestoneBar');
+  if (!el) return;
+  const total = state.milestones.length;
+  const done = state.milestones.filter(m => m.achieved).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  el.innerHTML = `
+    <div class="milestone-progress-wrap">
+      <div class="milestone-progress-fill" style="width:${pct}%"></div>
+    </div>
+    <div class="milestone-progress-label"><span>${done} of ${total}</span> milestones achieved &nbsp;·&nbsp; ${pct}% complete</div>`;
+}
+
+function renderPainByDay() {
+  const el = document.getElementById('painByDay');
+  if (!el) return;
+  const painEntries = state.entries.filter(e => e.pain && e.date);
+  if (painEntries.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-icon">📈</div>Log symptom entries with pain levels to see trend.</div>';
+    return;
+  }
+  // Group by date, average pain
+  const byDate = {};
+  painEntries.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e.pain);
   });
+  const days = Object.keys(byDate).sort().slice(-10); // last 10 days
+  const rows = days.map(date => {
+    const vals = byDate[date];
+    const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+    const rounded = Math.round(avg * 10) / 10;
+    const pct = (avg / 5) * 100;
+    const color = avg <= 2 ? 'var(--green)' : avg <= 3.5 ? 'var(--yellow)' : 'var(--red)';
+    const d = new Date(date + 'T00:00:00');
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `<div class="pain-day-row">
+      <div class="pain-day-label">${label}</div>
+      <div class="pain-day-bar-wrap">
+        <div class="pain-day-bar" style="width:${pct}%;background:${color}">${rounded > 0 ? rounded : ''}</div>
+      </div>
+      <div class="pain-day-val">${rounded}/5</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function renderSymptomFreq() {
+  const el = document.getElementById('symptomFreq');
+  if (!el) return;
+  const freq = {};
+  state.entries.filter(e => e.type === 'symptom' && e.tags && e.tags.length).forEach(e => {
+    e.tags.forEach(t => { freq[t] = (freq[t] || 0) + 1; });
+  });
+  const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  if (sorted.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-icon">🔍</div>Log symptom entries to see frequency.</div>';
+    return;
+  }
+  const max = sorted[0][1];
+  el.innerHTML = sorted.map(([tag, count]) => `
+    <div class="symptom-row">
+      <div class="symptom-name">${tag}</div>
+      <div class="symptom-bar-wrap"><div class="symptom-bar" style="width:${(count/max)*100}%"></div></div>
+      <div class="symptom-count">${count}</div>
+    </div>`).join('');
 }
 
 // =========== SETTINGS ===========
