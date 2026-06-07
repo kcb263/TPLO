@@ -1127,7 +1127,7 @@ enableIndexedDbPersistence(db).catch(() => {});
 
 let firestoreReady = false;
 let saveTimeout = null;
-let suppressRemoteUpdate = false;
+let isSaving = false;  // true while our own write is in-flight
 
 // Show sync status in header
 function setSyncStatus(status) {
@@ -1139,39 +1139,72 @@ function setSyncStatus(status) {
   el.dataset.status = status;
 }
 
-// Debounced save to Firestore — batches rapid changes
+// Debounced save to Firestore
 function saveToFirestore() {
   setSyncStatus('saving');
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
     try {
+      isSaving = true;
       await setDoc(DOC_REF, state);
       setSyncStatus('saved');
     } catch(e) {
       console.warn('Firestore save failed, using localStorage fallback', e);
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    } finally {
+      // Small delay before allowing remote updates, so our echo doesn't clobber us
+      setTimeout(() => { isSaving = false; }, 1500);
     }
   }, 800);
 }
 
-// Real-time listener — updates UI when another device makes a change
+// Merge remote medications into local, preserving today's dosesGivenToday
+// Local always wins for today's dose tracking; remote wins for everything else
+function mergeMedications(localMeds, remoteMeds) {
+  const localMap = {};
+  (localMeds || []).forEach(m => { localMap[m.id] = m; });
+  return (remoteMeds || []).map(remoteMed => {
+    const local = localMap[remoteMed.id];
+    return {
+      ...remoteMed,
+      dosesRequired: remoteMed.dosesRequired || freqToDoses(remoteMed.freq),
+      dosesGivenToday: local ? (local.dosesGivenToday || []) : (remoteMed.dosesGivenToday || []),
+    };
+  });
+}
+
+// Real-time listener — updates UI when ANOTHER device makes a change
 function startRealtimeSync() {
-  onSnapshot(DOC_REF, (snap) => {
+  onSnapshot(DOC_REF, { includeMetadataChanges: true }, (snap) => {
     if (!snap.exists()) return;
-    if (suppressRemoteUpdate) return;
+
+    // Skip echoes of our own writes (fromCache=false + hasPendingWrites=false means server confirmed)
+    // But if isSaving, this snapshot is our own write echo — skip it
+    if (isSaving && !snap.metadata.fromCache) return;
+
     const remote = snap.data();
-    // Merge remote into state
-    state = { ...state, ...remote };
-    // Migrate if needed
+
+    // Merge: remote wins for entries, milestones, settings; local wins for today's doses
+    state = {
+      ...state,
+      ...remote,
+      medications: mergeMedications(state.medications, remote.medications),
+    };
+
+    // Migrate
     state.medications.forEach(m => {
       if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
       if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
     });
-    // Persist locally too
+
+    // Persist locally
     localStorage.setItem('tplo_tracker', JSON.stringify(state));
-    // Re-render everything
-    renderAll();
-    setSyncStatus('saved');
+
+    // Only re-render if this was a genuine remote change (from server, not our own echo)
+    if (!snap.metadata.hasPendingWrites) {
+      renderAll();
+      setSyncStatus('saved');
+    }
   }, (err) => {
     console.warn('Firestore listener error', err);
     setSyncStatus('offline');
