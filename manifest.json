@@ -1,0 +1,29 @@
+{
+  "name": "Coco TPLO Recovery",
+  "short_name": "Coco TPLO",
+  "description": "Post-surgery recovery tracker for Coco",
+  "start_url": "/TPLO/tplo-tracker.html",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#c07a45",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/TPLO/icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/TPLO/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/TPLO/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
