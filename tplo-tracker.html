@@ -1490,9 +1490,32 @@ function addEntry() {
     notes,
   };
   state.entries.unshift(entry);
+
+  // If medication entry, also write each selected med to medAdministrations
+  // so it appears in the Medication Log tab
+  if (currentType === 'medication' && selectedTags.size > 0) {
+    selectedTags.forEach(tag => {
+      // Match tag text back to a medication by name
+      const med = state.medications.find(m =>
+        tag.startsWith(m.name)
+      );
+      state.medAdministrations.push({
+        medId: med ? med.id : null,
+        medName: med ? med.name : tag,
+        dose: med ? med.dose : '',
+        date,
+        time,
+        doseNum: null,   // manually logged, not a numbered pip dose
+        totalDoses: med ? med.dosesRequired : null,
+        manual: true,    // flag so we know this came from the log form
+      });
+    });
+  }
+
   saveData();
   clearForm();
   renderLog();
+  renderMedLog();
   updateStats();
 }
 
@@ -1679,22 +1702,27 @@ function renderMedSchedule() {
 
 function renderMedLog() {
   const el = document.getElementById('medLog');
-  const logs = [...state.medAdministrations].reverse();
+  const logs = [...state.medAdministrations].sort((a, b) =>
+    (b.date + b.time).localeCompare(a.date + a.time)
+  );
   if (logs.length === 0) {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div>No administrations logged.</div>';
     return;
   }
-  el.innerHTML = logs.slice(0,30).map(l =>
-    `<div class="log-entry">
+  el.innerHTML = logs.slice(0, 40).map(l => {
+    const doseInfo = l.manual
+      ? '<span style="color:var(--text-muted);font-size:0.72rem"> · manually logged</span>'
+      : (l.totalDoses > 1 ? ` &nbsp;·&nbsp; Dose ${l.doseNum} of ${l.totalDoses}` : '');
+    return `<div class="log-entry">
       <div class="log-header">
         <div class="log-meta">
           <span class="log-badge badge-medication">💊 ${l.medName}</span>
           <span class="log-time">${l.date} ${l.time}</span>
         </div>
       </div>
-      <div class="log-body">${l.dose || 'Dose not specified'}${l.totalDoses > 1 ? ` &nbsp;·&nbsp; Dose ${l.doseNum} of ${l.totalDoses}` : ''}</div>
-    </div>`
-  ).join('');
+      <div class="log-body">${l.dose || 'Dose not specified'}${doseInfo}</div>
+    </div>`;
+  }).join('');
 }
 
 // =========== MILESTONES ===========
