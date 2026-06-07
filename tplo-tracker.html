@@ -52,6 +52,18 @@
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
   }
 
+  .sync-badge {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sync-badge[data-status="saving"] { color: var(--yellow); }
+  .sync-badge[data-status="saved"]  { color: var(--green); }
+  .sync-badge[data-status="offline"]{ color: var(--text-muted); }
+  .sync-badge[data-status="error"]  { color: var(--red); }
+
   .dark-toggle {
     width: 36px; height: 36px;
     border-radius: 50%;
@@ -777,6 +789,7 @@
       <div class="subtitle">Surgery <span id="surgeryDateDisplay">—</span> &nbsp;·&nbsp; TPLO Recovery</div>
     </div>
     <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    <div id="syncStatus" class="sync-badge" data-status="saved">☁️ Synced</div>
     <div class="day-badge" id="dayBadge">Day 1</div>
   </div>
 </header>
@@ -1091,7 +1104,105 @@
 
 </main>
 
-<script>
+<script type="module">
+// =========== FIREBASE ===========
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQJ49y0X1F9xIEr1aH3GoVoXeniYd_10o",
+  authDomain: "tplo-recovery.firebaseapp.com",
+  projectId: "tplo-recovery",
+  storageBucket: "tplo-recovery.firebasestorage.app",
+  messagingSenderId: "996143910170",
+  appId: "1:996143910170:web:99e345f9c225dfcdfbf0a3"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const DOC_REF = doc(db, 'trackers', 'coco-tplo');
+
+// Enable offline persistence so it works without signal
+enableIndexedDbPersistence(db).catch(() => {});
+
+let firestoreReady = false;
+let saveTimeout = null;
+let suppressRemoteUpdate = false;
+
+// Show sync status in header
+function setSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const icons = { saving: '⏳', saved: '☁️', offline: '📴', error: '⚠️' };
+  const labels = { saving: 'Saving…', saved: 'Synced', offline: 'Offline', error: 'Sync error' };
+  el.textContent = (icons[status] || '') + ' ' + (labels[status] || '');
+  el.dataset.status = status;
+}
+
+// Debounced save to Firestore — batches rapid changes
+function saveToFirestore() {
+  setSyncStatus('saving');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    try {
+      await setDoc(DOC_REF, state);
+      setSyncStatus('saved');
+    } catch(e) {
+      console.warn('Firestore save failed, using localStorage fallback', e);
+      setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    }
+  }, 800);
+}
+
+// Real-time listener — updates UI when another device makes a change
+function startRealtimeSync() {
+  onSnapshot(DOC_REF, (snap) => {
+    if (!snap.exists()) return;
+    if (suppressRemoteUpdate) return;
+    const remote = snap.data();
+    // Merge remote into state
+    state = { ...state, ...remote };
+    // Migrate if needed
+    state.medications.forEach(m => {
+      if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
+      if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
+    });
+    // Persist locally too
+    localStorage.setItem('tplo_tracker', JSON.stringify(state));
+    // Re-render everything
+    renderAll();
+    setSyncStatus('saved');
+  }, (err) => {
+    console.warn('Firestore listener error', err);
+    setSyncStatus('offline');
+  });
+}
+
+function renderAll() {
+  renderLog();
+  renderMedSchedule();
+  renderMedLog();
+  renderMilestones();
+  updateStats();
+  updateDayBadge();
+  updatePhase();
+  const dogNameInput = document.getElementById('dogNameInput');
+  if (dogNameInput) dogNameInput.value = state.dogName;
+  const settingsDogName = document.getElementById('settingsDogName');
+  if (settingsDogName) settingsDogName.value = state.dogName;
+  const surgeryDateInput = document.getElementById('surgeryDate');
+  if (surgeryDateInput) surgeryDateInput.value = state.surgeryDate || '';
+  const vetNameInput = document.getElementById('vetName');
+  if (vetNameInput) vetNameInput.value = state.vetName || '';
+  const vetPhoneInput = document.getElementById('vetPhone');
+  if (vetPhoneInput) vetPhoneInput.value = state.vetPhone || '';
+  const vetEmergencyInput = document.getElementById('vetEmergency');
+  if (vetEmergencyInput) vetEmergencyInput.value = state.vetEmergency || '';
+}
+
+window.addEventListener('online',  () => setSyncStatus('saved'));
+window.addEventListener('offline', () => setSyncStatus('offline'));
+
 // =========== STATE ===========
 let state = {
   dogName: 'Coco',
@@ -1228,15 +1339,18 @@ function toTimeStr(d) {
 
 // =========== STORAGE ===========
 function saveData() {
+  // Always write localStorage as fallback
   localStorage.setItem('tplo_tracker', JSON.stringify(state));
+  // Write to Firestore (debounced)
+  saveToFirestore();
 }
 
 function loadData() {
+  // Start with localStorage for instant load
   const raw = localStorage.getItem('tplo_tracker');
   if (raw) {
     try {
       state = { ...state, ...JSON.parse(raw) };
-      // Migrate old boolean givenToday → dosesGivenToday array
       state.medications.forEach(m => {
         if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
         if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
@@ -1244,6 +1358,8 @@ function loadData() {
       });
     } catch(e) {}
   }
+  // Then start Firestore real-time listener (will update if remote is newer)
+  startRealtimeSync();
 }
 
 // =========== TABS ===========
@@ -1766,6 +1882,14 @@ function exportLog() {
 }
 
 // =========== RUN ===========
+// Expose functions to global scope (required for type="module" + inline onclick handlers)
+Object.assign(window, {
+  showTab, toggleDark, toggleAddMedForm, addMedAndCollapse,
+  selectType, selectPain, toggleTag, addEntry, clearForm, deleteEntry,
+  filterLog, addMed, deleteMed, recordDose, toggleMilestone,
+  saveSettings, clearAllData, exportLog, updateDogName, updateSurgeryDate,
+});
+
 window.addEventListener('load', init);
 
 // Reset med "given" status at midnight (simple check)
