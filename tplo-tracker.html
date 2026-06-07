@@ -1158,49 +1158,32 @@ function saveToFirestore() {
   }, 800);
 }
 
-// Merge remote medications into local, preserving today's dosesGivenToday
-// Local always wins for today's dose tracking; remote wins for everything else
-function mergeMedications(localMeds, remoteMeds) {
-  const localMap = {};
-  (localMeds || []).forEach(m => { localMap[m.id] = m; });
-  return (remoteMeds || []).map(remoteMed => {
-    const local = localMap[remoteMed.id];
-    return {
-      ...remoteMed,
-      dosesRequired: remoteMed.dosesRequired || freqToDoses(remoteMed.freq),
-      dosesGivenToday: local ? (local.dosesGivenToday || []) : (remoteMed.dosesGivenToday || []),
-    };
-  });
-}
-
 // Real-time listener — updates UI when ANOTHER device makes a change
 function startRealtimeSync() {
   onSnapshot(DOC_REF, { includeMetadataChanges: true }, (snap) => {
     if (!snap.exists()) return;
 
-    // Skip echoes of our own writes (fromCache=false + hasPendingWrites=false means server confirmed)
-    // But if isSaving, this snapshot is our own write echo — skip it
+    // Skip echoes of our own in-flight writes
     if (isSaving && !snap.metadata.fromCache) return;
 
     const remote = snap.data();
 
-    // Merge: remote wins for entries, milestones, settings; local wins for today's doses
-    state = {
-      ...state,
-      ...remote,
-      medications: mergeMedications(state.medications, remote.medications),
-    };
+    // Remote is now the single source of truth — just migrate and apply
+    state = { ...state, ...remote };
 
-    // Migrate
-    state.medications.forEach(m => {
-      if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
-      if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
+    // Migrate medications — strip any legacy dosesGivenToday, ensure dosesRequired
+    state.medications = (state.medications || []).map(m => {
+      const { dosesGivenToday, givenToday, givenTimes, ...clean } = m;
+      return {
+        ...clean,
+        dosesRequired: clean.dosesRequired || freqToDoses(clean.freq),
+      };
     });
 
     // Persist locally
     localStorage.setItem('tplo_tracker', JSON.stringify(state));
 
-    // Only re-render if this was a genuine remote change (from server, not our own echo)
+    // Re-render only on confirmed server writes (not our own echo)
     if (!snap.metadata.hasPendingWrites) {
       renderAll();
       setSyncStatus('saved');
@@ -1287,10 +1270,10 @@ function restoreFromBackup() {
     vetPhone: '',
     vetEmergency: '',
     medications: [
-      { id: 1001, name: 'Carprovet',     dose: '75mg',      freq: 'Every 12 hours',      food: 'Yes — with food', notes: '',                              dosesRequired: 2, dosesGivenToday: [] },
-      { id: 1002, name: 'Gabapentin',    dose: 'Half tablet',freq: 'Twice daily',          food: 'Yes — with food', notes: 'Pain relief with mild sedative', dosesRequired: 2, dosesGivenToday: [] },
-      { id: 1003, name: 'Cefpodoxime',   dose: '1 tablet',  freq: 'Once daily',           food: 'Yes — with food', notes: 'Antibiotics',                    dosesRequired: 1, dosesGivenToday: [] },
-      { id: 1004, name: 'Cold Therapy',  dose: '10 minutes', freq: 'Three times daily',    food: 'Either',          notes: '',                              dosesRequired: 3, dosesGivenToday: [] },
+      { id: 1001, name: 'Carprovet',    dose: '75mg',       freq: 'Every 12 hours',   food: 'Yes — with food', notes: '',                              dosesRequired: 2 },
+      { id: 1002, name: 'Gabapentin',   dose: 'Half tablet', freq: 'Twice daily',       food: 'Yes — with food', notes: 'Pain relief with mild sedative', dosesRequired: 2 },
+      { id: 1003, name: 'Cefpodoxime',  dose: '1 tablet',   freq: 'Once daily',        food: 'Yes — with food', notes: 'Antibiotics',                    dosesRequired: 1 },
+      { id: 1004, name: 'Cold Therapy', dose: '10 minutes',  freq: 'Three times daily', food: 'Either',          notes: '',                              dosesRequired: 3 },
     ],
     medAdministrations: [
       { medId: 1001, doseIndex: 0, medName: 'Carprovet',   dose: '75mg',       date: '2026-06-05', time: '09:21', doseNum: 1, totalDoses: 2 },
@@ -1379,19 +1362,20 @@ function saveData() {
 }
 
 function loadData() {
-  // Start with localStorage for instant load
   const raw = localStorage.getItem('tplo_tracker');
   if (raw) {
     try {
       state = { ...state, ...JSON.parse(raw) };
-      state.medications.forEach(m => {
-        if (!Array.isArray(m.dosesGivenToday)) m.dosesGivenToday = [];
-        if (!m.dosesRequired) m.dosesRequired = freqToDoses(m.freq);
-        delete m.givenToday; delete m.givenTimes;
+      // Strip legacy dosesGivenToday — pips are now derived from medAdministrations
+      state.medications = (state.medications || []).map(m => {
+        const { dosesGivenToday, givenToday, givenTimes, ...clean } = m;
+        return {
+          ...clean,
+          dosesRequired: clean.dosesRequired || freqToDoses(clean.freq),
+        };
       });
     } catch(e) {}
   }
-  // Then start Firestore real-time listener (will update if remote is newer)
   startRealtimeSync();
 }
 
@@ -1490,32 +1474,9 @@ function addEntry() {
     notes,
   };
   state.entries.unshift(entry);
-
-  // If medication entry, also write each selected med to medAdministrations
-  // so it appears in the Medication Log tab
-  if (currentType === 'medication' && selectedTags.size > 0) {
-    selectedTags.forEach(tag => {
-      // Match tag text back to a medication by name
-      const med = state.medications.find(m =>
-        tag.startsWith(m.name)
-      );
-      state.medAdministrations.push({
-        medId: med ? med.id : null,
-        medName: med ? med.name : tag,
-        dose: med ? med.dose : '',
-        date,
-        time,
-        doseNum: null,   // manually logged, not a numbered pip dose
-        totalDoses: med ? med.dosesRequired : null,
-        manual: true,    // flag so we know this came from the log form
-      });
-    });
-  }
-
   saveData();
   clearForm();
   renderLog();
-  renderMedLog();
   updateStats();
 }
 
@@ -1576,7 +1537,6 @@ function addMed() {
     food: document.getElementById('medFood').value,
     notes: document.getElementById('medNotes').value.trim(),
     dosesRequired: freqToDoses(document.getElementById('medFreq').value),
-    dosesGivenToday: [],
   };
   state.medications.push(med);
   saveData();
@@ -1591,49 +1551,33 @@ function recordDose(medId, doseIndex) {
   const med = state.medications.find(m => m.id === medId);
   if (!med) return;
   const today = toDateStr(new Date());
-  // Ensure array sized to dosesRequired
-  if (!med.dosesGivenToday) med.dosesGivenToday = [];
-  // If this slot is already filled, undo it (toggle off)
-  if (med.dosesGivenToday[doseIndex]) {
-    med.dosesGivenToday[doseIndex] = null;
-    // remove matching administration log entry
-    state.medAdministrations = state.medAdministrations.filter(
-      a => !(a.medId === medId && a.doseIndex === doseIndex && a.date === today)
-    );
-    state.entries = state.entries.filter(
-      e => !(e.medId === medId && e.doseIndex === doseIndex && e.date === today)
-    );
+
+  // Check if this slot already has an administration record
+  const existing = state.medAdministrations.find(
+    a => a.medId === medId && a.doseIndex === doseIndex && a.date === today
+  );
+
+  if (existing) {
+    // Toggle off — remove the single record
+    state.medAdministrations = state.medAdministrations.filter(a => a !== existing);
   } else {
-    const now = new Date();
-    const timeStr = toTimeStr(now);
-    med.dosesGivenToday[doseIndex] = timeStr;
-    const logEntry = {
+    // Toggle on — append one record
+    state.medAdministrations.push({
+      id: Date.now(),
       medId,
       doseIndex,
       medName: med.name,
       dose: med.dose,
       date: today,
-      time: timeStr,
+      time: toTimeStr(new Date()),
       doseNum: doseIndex + 1,
       totalDoses: med.dosesRequired,
-    };
-    state.medAdministrations.push(logEntry);
-    state.entries.unshift({
-      id: Date.now(),
-      medId,
-      doseIndex,
-      type: 'medication',
-      date: today,
-      time: timeStr,
-      pain: null,
-      tags: [med.name + (med.dose ? ` (${med.dose})` : '')],
-      notes: `Administered: ${med.name}${med.dose ? ' ' + med.dose : ''} — Dose ${doseIndex + 1} of ${med.dosesRequired}`,
     });
   }
+
   saveData();
   renderMedSchedule();
   renderMedLog();
-  renderLog();
   updateStats();
 }
 
@@ -1669,15 +1613,23 @@ function renderMedSchedule() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">💊</div>No medications added yet.</div>';
     return;
   }
+  const today = toDateStr(new Date());
   el.innerHTML = state.medications.map(med => {
-    const required = med.dosesRequired || 1;
-    const given = med.dosesGivenToday || [];
-    const givenCount = given.filter(Boolean).length;
+    const required = med.dosesRequired || freqToDoses(med.freq) || 1;
+    // Derive which dose slots are filled from medAdministrations
+    const todayDoses = state.medAdministrations.filter(
+      a => a.medId === med.id && a.date === today
+    );
+    const givenCount = todayDoses.length;
     const allGiven = givenCount >= required;
+
     const pips = Array.from({length: required}, (_, i) => {
-      const time = given[i];
+      const record = todayDoses.find(a => a.doseIndex === i);
+      const time = record ? record.time : null;
       return `<div class="dose-slot">
-        <div class="dose-pip ${time ? 'given' : ''}" onclick="recordDose(${med.id}, ${i})" title="${time ? 'Given at ' + time + ' — tap to undo' : 'Tap to record dose ' + (i+1)}">
+        <div class="dose-pip ${time ? 'given' : ''}"
+          onclick="recordDose(${med.id}, ${i})"
+          title="${time ? 'Given at ' + time + ' — tap to undo' : 'Tap to record dose ' + (i+1)}">
           ${time ? '✓' : (i+1)}
         </div>
         <div class="dose-pip-time">${time || ''}</div>
@@ -1953,17 +1905,6 @@ Object.assign(window, {
 
 window.addEventListener('load', init);
 
-// Reset med "given" status at midnight (simple check)
-setInterval(() => {
-  const today = toDateStr(new Date());
-  const lastReset = localStorage.getItem('tplo_last_reset');
-  if (lastReset !== today) {
-    state.medications.forEach(m => m.dosesGivenToday = []);
-    localStorage.setItem('tplo_last_reset', today);
-    saveData();
-    renderMedSchedule();
-  }
-}, 60000);
 </script>
 </body>
 </html>
