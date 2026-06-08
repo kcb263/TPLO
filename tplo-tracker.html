@@ -1112,7 +1112,7 @@
 <script type="module">
 // =========== FIREBASE ===========
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQJ49y0X1F9xIEr1aH3GoVoXeniYd_10o",
@@ -1124,11 +1124,9 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
+// Use modern persistent cache (replaces deprecated enableIndexedDbPersistence)
+const db = initializeFirestore(fbApp, { localCache: persistentLocalCache() });
 const DOC_REF = doc(db, 'trackers', 'coco-tplo');
-
-// Enable offline persistence so it works without signal
-enableIndexedDbPersistence(db).catch(() => {});
 
 let firestoreReady = false;
 let saveTimeout = null;
