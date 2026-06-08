@@ -1356,7 +1356,11 @@ function init() {
 }
 
 function toDateStr(d) {
-  return d.toISOString().split('T')[0];
+  // Use local date, not UTC — avoids timezone mismatch between save and render
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function toTimeStr(d) {
@@ -1624,6 +1628,8 @@ function renderMedSchedule() {
     return;
   }
   const today = toDateStr(new Date());
+  console.log('[MedSchedule] today =', today, '| medAdministrations count =', state.medAdministrations.length);
+  console.log('[MedSchedule] administrations:', JSON.stringify(state.medAdministrations.map(a => ({medId:a.medId, date:a.date, doseIndex:a.doseIndex}))));
   el.innerHTML = state.medications.map(med => {
     const required = med.dosesRequired || freqToDoses(med.freq) || 1;
     // Derive which dose slots are filled from medAdministrations
