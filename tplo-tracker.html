@@ -1566,7 +1566,7 @@ function recordDose(medId, doseIndex) {
 
   // Check if this slot already has an administration record
   const existing = state.medAdministrations.find(
-    a => a.medId === medId && a.doseIndex === doseIndex && a.date === today
+    a => String(a.medId) === String(medId) && a.doseIndex === doseIndex && a.date === today
   );
 
   if (existing) {
@@ -1576,7 +1576,7 @@ function recordDose(medId, doseIndex) {
     // Toggle on — append one record
     state.medAdministrations.push({
       id: Date.now(),
-      medId,
+      medId: Number(medId),
       doseIndex,
       medName: med.name,
       dose: med.dose,
@@ -1630,9 +1630,9 @@ function renderMedSchedule() {
   console.log('[MedSchedule] administrations:', JSON.stringify(state.medAdministrations.map(a => ({medId:a.medId, date:a.date, doseIndex:a.doseIndex}))));
   el.innerHTML = state.medications.map(med => {
     const required = med.dosesRequired || freqToDoses(med.freq) || 1;
-    // Derive which dose slots are filled from medAdministrations
+    // Derive which dose slots are filled — coerce IDs to strings for safe comparison
     const todayDoses = state.medAdministrations.filter(
-      a => a.medId === med.id && a.date === today
+      a => String(a.medId) === String(med.id) && a.date === today
     );
     const givenCount = todayDoses.length;
     const allGiven = givenCount >= required;
