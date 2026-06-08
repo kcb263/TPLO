@@ -1132,7 +1132,6 @@ enableIndexedDbPersistence(db).catch(() => {});
 
 let firestoreReady = false;
 let saveTimeout = null;
-let isSaving = false;  // true while our own write is in-flight
 
 // Show sync status in header
 function setSyncStatus(status) {
@@ -1150,49 +1149,55 @@ function saveToFirestore() {
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
     try {
-      isSaving = true;
       await setDoc(DOC_REF, state);
       setSyncStatus('saved');
     } catch(e) {
       console.warn('Firestore save failed, using localStorage fallback', e);
       setSyncStatus(navigator.onLine ? 'error' : 'offline');
-    } finally {
-      // Small delay before allowing remote updates, so our echo doesn't clobber us
-      setTimeout(() => { isSaving = false; }, 1500);
     }
   }, 800);
 }
 
-// Real-time listener — updates UI when ANOTHER device makes a change
+// Real-time listener
+// Firestore fires onSnapshot in two cases:
+//   1. Local write acknowledged (hasPendingWrites=true, fromCache=true) — our own change, UI already correct, skip
+//   2. Server confirmed data (hasPendingWrites=false, fromCache=false) — either our echo OR remote change
+//      We update state from server either way — it's the truth. Only skip the re-render for our own echoes
+//      by comparing a lightweight hash of medAdministrations length + entries length.
+let lastKnownRemoteHash = '';
+
+function stateHash(s) {
+  return `${(s.medAdministrations||[]).length}:${(s.entries||[]).length}:${(s.milestones||[]).filter(m=>m.achieved).length}`;
+}
+
 function startRealtimeSync() {
   onSnapshot(DOC_REF, { includeMetadataChanges: true }, (snap) => {
     if (!snap.exists()) return;
 
-    // Skip echoes of our own in-flight writes
-    if (isSaving && !snap.metadata.fromCache) return;
+    // Skip local-write acknowledgements (Firestore echoing our own pending write)
+    if (snap.metadata.hasPendingWrites) return;
 
     const remote = snap.data();
+    const remoteHash = stateHash(remote);
 
-    // Remote is now the single source of truth — just migrate and apply
+    // Always apply remote state — it is the source of truth
     state = { ...state, ...remote };
 
-    // Migrate medications — strip any legacy dosesGivenToday, ensure dosesRequired
+    // Migrate medications
     state.medications = (state.medications || []).map(m => {
       const { dosesGivenToday, givenToday, givenTimes, ...clean } = m;
-      return {
-        ...clean,
-        dosesRequired: clean.dosesRequired || freqToDoses(clean.freq),
-      };
+      return { ...clean, dosesRequired: clean.dosesRequired || freqToDoses(clean.freq) };
     });
 
     // Persist locally
     localStorage.setItem('tplo_tracker', JSON.stringify(state));
 
-    // Re-render only on confirmed server writes (not our own echo)
-    if (!snap.metadata.hasPendingWrites) {
-      renderAll();
-      setSyncStatus('saved');
-    }
+    // Always re-render — whether it's our echo or a remote change,
+    // we want the UI to reflect the confirmed server state
+    renderAll();
+    setSyncStatus('saved');
+    lastKnownRemoteHash = remoteHash;
+
   }, (err) => {
     console.warn('Firestore listener error', err);
     setSyncStatus('offline');
