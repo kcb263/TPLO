@@ -15,12 +15,15 @@
     --bg: #f7f4ef;
     --surface: #ffffff;
     --surface2: #f0ece4;
+    --surface-contrast: #ffffff;
     --border: #e0d8cc;
     --text: #2a2520;
     --text-muted: #8a7f74;
     --accent: #c07a45;
     --accent-light: #f5e9de;
     --accent-dark: #9a5f32;
+    --field-bg: var(--bg);
+    --field-bg-focus: var(--surface-contrast);
     --green: #4a7c59;
     --green-light: #e4f0e8;
     --red: #c04a45;
@@ -36,25 +39,29 @@
   }
 
   body.dark {
-    --bg: #1a1714;
-    --surface: #242019;
-    --surface2: #2e2a24;
-    --border: #3a342c;
+    --bg: #000000;
+    --surface: #000000;
+    --surface2: #090909;
+    --surface-contrast: #000000;
+    --border: #2b2118;
     --text: #f0ebe3;
-    --text-muted: #9a8f82;
+    --text-muted: #a09182;
     --accent: #d4895a;
-    --accent-light: #3a2818;
+    --accent-light: #26180d;
     --accent-dark: #e8a070;
+    --field-bg: #000000;
+    --field-bg-focus: #000000;
     --green: #5a9c6e;
-    --green-light: #1a2e20;
+    --green-light: #101c13;
     --red: #d45a55;
-    --red-light: #2e1a18;
+    --red-light: #22110f;
     --blue: #6a8bc0;
-    --blue-light: #1a2238;
+    --blue-light: #121826;
     --yellow: #d4a84a;
-    --yellow-light: #2e2410;
+    --yellow-light: #241c09;
     --shadow: 0 2px 12px rgba(0,0,0,0.3);
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+    color-scheme: dark;
   }
 
   .sync-badge {
@@ -89,6 +96,7 @@
     font-family: 'DM Sans', sans-serif;
     background: var(--bg);
     color: var(--text);
+    color-scheme: light;
     min-height: 100vh;
     padding-bottom: 40px;
   }
@@ -245,7 +253,7 @@
     border-radius: var(--radius-sm);
     font-family: 'DM Sans', sans-serif;
     font-size: 0.9rem;
-    background: var(--bg);
+    background: var(--field-bg);
     color: var(--text);
     transition: border-color 0.2s;
     outline: none;
@@ -253,7 +261,8 @@
 
   input:focus, textarea:focus, select:focus {
     border-color: var(--accent);
-    background: white;
+    background: var(--field-bg-focus);
+    color: var(--text);
   }
 
   textarea { resize: vertical; min-height: 80px; }
@@ -318,7 +327,7 @@
     padding: 6px 14px;
     border: 1.5px solid var(--border);
     border-radius: 20px;
-    background: white;
+    background: var(--surface-contrast);
     font-family: 'DM Sans', sans-serif;
     font-size: 0.82rem;
     cursor: pointer;
@@ -341,7 +350,7 @@
     padding: 5px 10px;
     border: 1.5px solid var(--border);
     border-radius: 20px;
-    background: white;
+    background: var(--surface-contrast);
     font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -464,7 +473,7 @@
     width: 32px; height: 32px;
     border-radius: 50%;
     border: 2px solid var(--green);
-    background: white;
+    background: var(--surface-contrast);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.75rem;
     color: var(--green);
@@ -736,7 +745,7 @@
     padding: 4px 12px;
     border: 1.5px solid var(--border);
     border-radius: 20px;
-    background: white;
+    background: var(--surface-contrast);
     font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -1112,7 +1121,7 @@
 <script type="module">
 // =========== FIREBASE ===========
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQJ49y0X1F9xIEr1aH3GoVoXeniYd_10o",
@@ -1124,9 +1133,11 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-// Use modern persistent cache (replaces deprecated enableIndexedDbPersistence)
-const db = initializeFirestore(fbApp, { localCache: persistentLocalCache() });
+const db = getFirestore(fbApp);
 const DOC_REF = doc(db, 'trackers', 'coco-tplo');
+
+// Enable offline persistence so it works without signal
+enableIndexedDbPersistence(db).catch(() => {});
 
 let firestoreReady = false;
 let saveTimeout = null;
@@ -1566,7 +1577,7 @@ function recordDose(medId, doseIndex) {
 
   // Check if this slot already has an administration record
   const existing = state.medAdministrations.find(
-    a => String(a.medId) === String(medId) && a.doseIndex === doseIndex && a.date === today
+    a => a.medId === medId && a.doseIndex === doseIndex && a.date === today
   );
 
   if (existing) {
@@ -1576,7 +1587,7 @@ function recordDose(medId, doseIndex) {
     // Toggle on — append one record
     state.medAdministrations.push({
       id: Date.now(),
-      medId: Number(medId),
+      medId,
       doseIndex,
       medName: med.name,
       dose: med.dose,
@@ -1630,9 +1641,9 @@ function renderMedSchedule() {
   console.log('[MedSchedule] administrations:', JSON.stringify(state.medAdministrations.map(a => ({medId:a.medId, date:a.date, doseIndex:a.doseIndex}))));
   el.innerHTML = state.medications.map(med => {
     const required = med.dosesRequired || freqToDoses(med.freq) || 1;
-    // Derive which dose slots are filled — coerce IDs to strings for safe comparison
+    // Derive which dose slots are filled from medAdministrations
     const todayDoses = state.medAdministrations.filter(
-      a => String(a.medId) === String(med.id) && a.date === today
+      a => a.medId === med.id && a.date === today
     );
     const givenCount = todayDoses.length;
     const allGiven = givenCount >= required;
